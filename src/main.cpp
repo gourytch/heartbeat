@@ -1,6 +1,10 @@
 #include <Arduino.h>
 #include <array>
 
+#include "ring.hpp"
+#include "ecg.hpp"
+
+
 #define MS_FACTOR 1000ULL
 #define TIME_TO_SLEEP 1000
 
@@ -10,7 +14,8 @@
 const auto max_rtc_size = 8 * 1024;
 const auto max_ssid_size = 32;
 const auto max_pass_size = 64;
-const auto ring_size = 8 * 1024 - 32 - 64 - 4 - 2 - 2;
+const auto ring_size = 2048;
+
 
 struct AppState {
   uint64_t boot_count;    // счетчик пробуждений.
@@ -22,6 +27,8 @@ struct AppState {
 
 // Up to 8 KB RTC Slow Memory
 RTC_DATA_ATTR struct {
+    AppState state;
+    RingBuffer<ECGSample, ring_size> samples;
 } memory {
   0, /* boot_count */
 };
@@ -43,11 +50,11 @@ void do_work() {
   toggle_led();
   Serial.begin(115200);
   delay(10);
-  Serial.printf("boot #%d\n", memory.boot_count);
+  Serial.printf("boot #%lu\n", memory.state.boot_count);
 }
 
 void setup() {
-  if (memory.boot_count++ == 0) do_init();
+  if (memory.state.boot_count++ == 0) do_init();
   do_work();
   go_to_sleep();
 }
